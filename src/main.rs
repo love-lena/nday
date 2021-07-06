@@ -1,10 +1,17 @@
 use std::fs::File;
 use std::io::prelude::*;
 use std::path::Path;
+use chrono::prelude::*;
+use chrono::Local;
+//use chrono::format;
 
 static TEMPLATE_TEXT: &str = "DATE\n\nTo-do today:\n- \n\nDone today:\n- \n\nKicked to tomorrow:\n- \n";
 
 fn main() {
+
+    let local: Date<Local> = Local::today();
+    println!("{}", local.format("%B %e").to_string());
+    
     let path = Path::new("today.txt");
     let display = path.display();
 
