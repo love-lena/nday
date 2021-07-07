@@ -12,14 +12,13 @@ static TEMPLATE_TEXT: &str =
 
 fn main() {
     let local: Date<Local> = Local::today();
-    //println!("{}", local.format("%b%-e").to_string());
 
-    let path_str = local.format("%b%-e.txt").to_string();
+    let home_name = dirs::home_dir().unwrap();
+    let path_str : String = format!("{}/Documents/nday_data/{}", home_name.to_str().unwrap(), local.format("%b%-e.txt").to_string());
     let path = Path::new(&path_str);
     let display = path.display();
 
-    // Open a file in write-only mode, returns `io::Result<File>`
-    let file = match File::open(&path) {
+    let _file = match File::open(&path) {
         Err(_) => match File::create(&path) {
             Err(why) => {
                 panic!("couldn't write to {}: {}", display, why)
@@ -34,7 +33,7 @@ fn main() {
         },
 
         Ok(file) => {
-            println!("opened today's notes {}", display);
+            println!("opening today's notes in VSCode ({})", display);
             file
         }
     };
