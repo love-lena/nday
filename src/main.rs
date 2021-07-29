@@ -8,7 +8,7 @@ use std::process::Command;
 //use chrono::format;
 
 static TEMPLATE_TEXT: &str =
-    "DATE\n\nTo-do today:\n- \n\nDone today:\n- \n\nKicked to tomorrow:\n- \n";
+    "\n\nTo-do today:\n- \n\nDone today:\n- \n\nKicked to tomorrow:\n- \n";
 
 fn main() {
     let local: Date<Local> = Local::today();
@@ -24,7 +24,8 @@ fn main() {
                 panic!("couldn't write to {}: {}", display, why)
             }
             Ok(mut new_file) => {
-                match new_file.write_all(TEMPLATE_TEXT.as_bytes()) {
+                let todays_text = local.format("%B %-e").to_string() + TEMPLATE_TEXT;
+                match new_file.write_all(todays_text.as_bytes()) {
                     Err(why) => panic!("couldn't write to {}: {}", display, why),
                     Ok(_) => println!("created today's notes {}", display),
                 };
@@ -33,13 +34,10 @@ fn main() {
         },
 
         Ok(file) => {
-            println!("opening today's notes in VSCode ({})", display);
+            println!("opening today's notes in vim ({})", display);
             file
         }
     };
 
-    match Command::new("code").arg(path_str).output() {
-        Err(_) => panic!("could not execute code, is it configured correctly?"),
-        Ok(_) => (),
-    }
+    Command::new("vim").arg(path_str).status().unwrap();
 }
