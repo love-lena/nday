@@ -1,7 +1,8 @@
 use std::path::PathBuf;
+use std::fs;
 
-use console::Term;
 use clap::Parser;
+use dialoguer::Input;
 
 use serde::{Deserialize, Serialize};
 
@@ -38,21 +39,27 @@ fn main() -> Result<(), ::std::io::Error> {
     let mut cfg: NdayConfig = confy::load("nday").unwrap();
 
     if !cfg.setup || args.setup {
-        println!("Running setup...");
         let mut homepath = home::home_dir().unwrap();
         homepath.push("nday");
-        cfg.dir = homepath;
+        let homepath_str = homepath.into_os_string().into_string().unwrap();
+        
+        let input : String = Input::new()
+            .with_prompt("Enter default path")
+            .default(homepath_str)
+            .interact_text()?;
+
+        let mut datapath = PathBuf::new();
+        datapath.push(input);
+        let datapath_path = datapath.as_path();
+
+        fs::create_dir_all(datapath_path)?;
+
+        cfg.dir = datapath;
         cfg.setup = true;
         confy::store("nday", cfg).unwrap();
     }
 
-    let term = Term::stdout();
-    term.write_line("Hello World!")?;
-
-    let newcfg: NdayConfig = confy::load("nday").unwrap();
-    println!("{}", newcfg.dir.display());
-
-    term.clear_line()?;
+    // let newcfg: NdayConfig = confy::load("nday").unwrap();
 
     return Ok(());
 }

@@ -13,3 +13,4 @@ confy = "0.4.0"
 serde = { version = "1.0", features = ["derive"] }
 home = "0.5.3"
 clap = { version = "3.1.18", features = ["derive"] }
+dialoguer = "0.10.1"
