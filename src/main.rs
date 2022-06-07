@@ -1,43 +1,58 @@
-use chrono::prelude::*;
-use chrono::Local;
-use std::fs::File;
-//use std::fs::OpenOptions;
-use std::io::prelude::*;
-use std::path::Path;
-use std::process::Command;
-//use chrono::format;
+use std::path::PathBuf;
 
-static TEMPLATE_TEXT: &str =
-    "\n\nTo-do today:\n- \n\nDone today:\n- \n\nKicked to tomorrow:\n- \n";
+use console::Term;
+use clap::Parser;
 
-fn main() {
-    let local: Date<Local> = Local::today();
+use serde::{Deserialize, Serialize};
 
-    let home_name = dirs::home_dir().unwrap();
-    let path_str : String = format!("{}/Documents/nday_data/{}", home_name.to_str().unwrap(), local.format("%b%-e.txt").to_string());
-    let path = Path::new(&path_str);
-    let display = path.display();
+#[derive(Serialize, Deserialize)]
+struct NdayConfig {
+    #[serde(default)]
+    dir: PathBuf,
+    setup: bool,
+}
 
-    let _file = match File::open(&path) {
-        Err(_) => match File::create(&path) {
-            Err(why) => {
-                panic!("couldn't write to {}: {}", display, why)
-            }
-            Ok(mut new_file) => {
-                let todays_text = local.format("%B %-e").to_string() + TEMPLATE_TEXT;
-                match new_file.write_all(todays_text.as_bytes()) {
-                    Err(why) => panic!("couldn't write to {}: {}", display, why),
-                    Ok(_) => println!("created today's notes {}", display),
-                };
-                new_file
-            }
-        },
-
-        Ok(file) => {
-            println!("opening today's notes in vim ({})", display);
-            file
+/// `NdayConfig` implements `Default`
+impl ::std::default::Default for NdayConfig {
+    fn default() -> Self {
+        Self {
+            dir: PathBuf::new(),
+            setup: false,
         }
-    };
+    }
+}
 
-    Command::new("vim").arg(path_str).status().unwrap();
+#[derive(Parser, Debug)]
+#[clap(author, version, about, long_about = None)]
+struct Args {
+    /// Name of the person to greet
+    #[clap(short, long)]
+    setup: bool,
+}
+
+fn main() -> Result<(), ::std::io::Error> {
+
+    let args = Args::parse();
+
+    // Default location is /Users/lena/Library/Preferences/rs.nday/
+    let mut cfg: NdayConfig = confy::load("nday").unwrap();
+
+    if !cfg.setup || args.setup {
+        println!("Running setup...");
+        let mut homepath = home::home_dir().unwrap();
+        homepath.push("nday");
+        cfg.dir = homepath;
+        cfg.setup = true;
+        confy::store("nday", cfg).unwrap();
+    }
+
+    let term = Term::stdout();
+    term.write_line("Hello World!")?;
+
+    let newcfg: NdayConfig = confy::load("nday").unwrap();
+    println!("{}", newcfg.dir.display());
+
+    term.clear_line()?;
+
+    return Ok(());
 }
