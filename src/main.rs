@@ -28,7 +28,7 @@ struct NdayConfig {
 impl ::std::default::Default for NdayConfig {
     fn default() -> Self {
         let mut homepath = home::home_dir().unwrap();
-        homepath.push("nday");
+        homepath.push("nday_data");
         Self {
             dir: homepath,
             tool: String::from("vim"),
@@ -92,7 +92,7 @@ fn parse_kicked(mut file: File) -> Vec<String> {
         if start_collecting && !s.is_empty() {
             kicked_items.push(s.to_string());
         }
-        if s.eq("Kicked to tomorrow:") {
+        if s.eq("kicked:") {
             start_collecting = true;
         }
     }
