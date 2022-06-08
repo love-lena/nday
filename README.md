@@ -22,8 +22,8 @@ Uses `vim` to edit notes
 
 ## Plans for the future
 
-- [ ] Copy yesterday's "Kicked to tomorrow" to today's "To-do"
-  - [ ] Allows the user to select items they want to move over
+- [X] Copy yesterday's "Kicked to tomorrow" to today's "To-do"
+  - [X] Allows the user to select items they want to move over
   - [ ] "yesterday" is the last day with notes
 - [X] First time setup
 - [X] Choose folder for nday notes
