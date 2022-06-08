@@ -90,7 +90,7 @@ fn parse_kicked(mut file: File) -> Vec<String> {
     let split = s.split('\n');
     let mut start_collecting = false;
     for s in split {
-        if start_collecting && !s.is_empty() {
+        if start_collecting && !s.is_empty() && !s.eq("- ") {
             kicked_items.push(s.to_string());
         }
         if s.eq("kicked:") {
@@ -165,7 +165,7 @@ fn main() {
                     let note_date =
                         NaiveDate::parse_from_str(yesterday_file_path_str, "%0e%b%Y.txt").unwrap();
                     println!(
-                        "pulling kicked items from {}",
+                        "Pulling kicked items from {}",
                         style(note_date.format("%A %B %-e %Y")).cyan()
                     );
                     let yesterday_file = File::open(&yesterday_file_path).unwrap();
@@ -207,8 +207,8 @@ fn main() {
                             let note_date =
                                 NaiveDate::parse_from_str(file_name_str, "%0e%b%Y.txt").unwrap();
                             println!(
-                                "created note for today {}",
-                                style(note_date.format("%A %B %-e %Y")).cyan()
+                                "Created note for today {}",
+                                style(note_date.format("%A %B %-e")).cyan()
                             );
                         }
                     };
@@ -217,17 +217,16 @@ fn main() {
             }
         }
 
-        Ok(file) => {
-            let file_name_str = file_path.file_name().unwrap().to_str().unwrap();
-            let note_date = NaiveDate::parse_from_str(file_name_str, "%0e%b%Y.txt").unwrap();
-            println!(
-                "opening today {}'s notes in {}",
-                style(note_date.format("%A %B %-e %Y")).cyan(),
-                cfg.tool
-            );
-            file
-        }
+        Ok(file) => file,
     };
+
+    let file_name_str = file_path.file_name().unwrap().to_str().unwrap();
+    let note_date = NaiveDate::parse_from_str(file_name_str, "%0e%b%Y.txt").unwrap();
+    println!(
+        "Using {} to open notes for today {}",
+        cfg.tool,
+        style(note_date.format("%A %B %-e")).cyan()
+    );
 
     Command::new(cfg.tool)
         .arg(file_path_str.to_string())
