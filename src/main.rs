@@ -5,7 +5,6 @@ use std::path::PathBuf;
 
 use std::process::Command;
 
-use clap::Error;
 use clap::Parser;
 use dialoguer::Input;
 use dialoguer::MultiSelect;
@@ -30,11 +29,11 @@ impl ::std::default::Default for NdayConfig {
     fn default() -> Self {
         let mut homepath = home::home_dir().unwrap();
         homepath.push("nday");
-        return Self {
+        Self {
             dir: homepath,
             tool: String::from("vim"),
             setup: false,
-        };
+        }
     }
 }
 
@@ -77,7 +76,7 @@ fn setup() -> Result<(), ::std::io::Error> {
         confy::store("nday", cfg).unwrap();
     }
 
-    return Ok(());
+    Ok(())
 }
 
 // TODO: return result
@@ -87,7 +86,7 @@ fn parse_kicked(mut file: File) -> Vec<String> {
     let mut s = String::new();
     file.read_to_string(&mut s).unwrap();
 
-    let split = s.split("\n");
+    let split = s.split('\n');
     let mut start_collecting = false;
     for s in split {
         if start_collecting && !s.is_empty() {
@@ -98,7 +97,7 @@ fn parse_kicked(mut file: File) -> Vec<String> {
         }
     }
 
-    return kicked_items;
+    kicked_items
 }
 
 fn get_yesterday(mut data_dir: PathBuf) -> Option<PathBuf> {
@@ -141,7 +140,7 @@ fn main() {
                         let kicked_items = parse_kicked(yesterday_file);
 
                         let mut kicked_items_to_copy: Vec<String> = Vec::new();
-                        if kicked_items.len() > 0 {
+                        if !kicked_items.is_empty() {
                             let chosen: Vec<usize> =
                                 MultiSelect::new().items(&kicked_items).interact().unwrap();
 
@@ -152,11 +151,7 @@ fn main() {
                         kicked_items_to_copy.push("- ".to_string());
                         kicked_items_to_copy
                     }
-                    _ => {
-                        let mut kicked_items_to_copy: Vec<String> = Vec::new();
-                        kicked_items_to_copy.push("- ".to_string());
-                        kicked_items_to_copy
-                    }
+                    _ => vec![String::from("- ")],
                 };
 
                 let todays_text = local.format("%-e %B, %Y").to_string();
