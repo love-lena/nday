@@ -27,5 +27,5 @@ Uses `vim` to edit notes
   - [ ] "yesterday" is the last day with notes
 - [X] First time setup
 - [X] Choose folder for nday notes
-- [ ] Choose which tool to open notes with (like vscode or nano instead of vim)
+- [X] Choose which tool to open notes with (like vscode or nano instead of vim)
 - [ ] Deploy via homebrew
