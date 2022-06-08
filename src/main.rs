@@ -192,7 +192,7 @@ fn main() {
                 }
 
                 Ok(mut new_file) => {
-                    let todays_text = local.format("%-e %B, %Y").to_string();
+                    let todays_text = local.format("%A %-e %B, %Y").to_string();
                     let todo_text = format!("todo:\n{}", kicked_items_to_add.join("\n"));
                     let done_text = "done:\n- ";
                     let kicked_text = "kicked:\n- ";
