@@ -13,18 +13,23 @@ use chrono::Local;
 
 use serde::{Deserialize, Serialize};
 
+// Default location is /Users/lena/Library/Preferences/rs.nday/
 #[derive(Serialize, Deserialize)]
 struct NdayConfig {
     #[serde(default)]
     dir: PathBuf,
+    tool: String,
     setup: bool,
 }
 
 /// `NdayConfig` implements `Default`
 impl ::std::default::Default for NdayConfig {
     fn default() -> Self {
-        Self {
-            dir: PathBuf::new(),
+        let mut homepath = home::home_dir().unwrap();
+        homepath.push("nday");
+        return Self {
+            dir: homepath,
+            tool: String::from("vim"),
             setup: false,
         }
     }
@@ -40,41 +45,49 @@ struct Args {
 
 static TEMPLATE_TEXT: &str = "\n\nTo-do today:\n- \n\nDone today:\n- \n\nKicked to tomorrow:\n- \n";
 
-fn main() -> Result<(), ::std::io::Error> {
+fn setup() -> Result<(), ::std::io::Error> {
     let args = Args::parse();
 
-    // Default location is /Users/lena/Library/Preferences/rs.nday/
     let mut cfg: NdayConfig = confy::load("nday").unwrap();
 
     if !cfg.setup || args.setup {
-        let mut homepath = home::home_dir().unwrap();
-        homepath.push("nday");
-        let homepath_str = homepath.into_os_string().into_string().unwrap();
+        let dir_str = cfg.dir.into_os_string().into_string().unwrap();
+        let tool_str = cfg.tool;
 
-        let input: String = Input::new()
+        let dir_input: String = Input::new()
             .with_prompt("Enter notes path")
-            .default(homepath_str)
+            .default(dir_str)
+            .interact_text()?;
+        
+        let tool_input: String = Input::new()
+            .with_prompt("Enter tool to edit notes")
+            .default(tool_str)
             .interact_text()?;
 
         let mut datapath = PathBuf::new();
-        datapath.push(input);
+        datapath.push(dir_input);
         let datapath_path = datapath.as_path();
 
         fs::create_dir_all(datapath_path)?;
 
         cfg.dir = datapath;
+        cfg.tool = tool_input;
         cfg.setup = true;
         confy::store("nday", cfg).unwrap();
     }
 
-    let mut updated_cfg: NdayConfig = confy::load("nday").unwrap();
+    return Ok(());
+}
+
+fn main() {
+    setup().unwrap();
+
+    let mut cfg: NdayConfig = confy::load("nday").unwrap();
 
     let local: Date<Local> = Local::today();
-    updated_cfg
-        .dir
-        .push(local.format("%0e%b%Y.txt").to_string());
-    let file_path = updated_cfg.dir.as_path();
-    let file_path_str = updated_cfg.dir.display();
+    cfg.dir.push(local.format("%0e%b%Y.txt").to_string());
+    let file_path = cfg.dir.as_path();
+    let file_path_str = cfg.dir.display();
 
     let _file = match File::open(&file_path) {
         Err(_) => match File::create(&file_path) {
@@ -92,15 +105,13 @@ fn main() -> Result<(), ::std::io::Error> {
         },
 
         Ok(file) => {
-            println!("opening today's notes in vim ({})", file_path_str);
+            println!("opening today's notes in {} ({})", cfg.tool, file_path_str);
             file
         }
     };
 
-    Command::new("vim")
+    Command::new(cfg.tool)
         .arg(file_path_str.to_string())
         .status()
         .unwrap();
-
-    return Ok(());
 }
