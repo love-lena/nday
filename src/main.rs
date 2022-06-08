@@ -7,6 +7,7 @@ use std::process::Command;
 
 use clap::Parser;
 use dialoguer::Input;
+use dialoguer::MultiSelect;
 
 use chrono::prelude::*;
 use chrono::Local;
@@ -31,14 +32,14 @@ impl ::std::default::Default for NdayConfig {
             dir: homepath,
             tool: String::from("vim"),
             setup: false,
-        }
+        };
     }
 }
 
 #[derive(Parser, Debug)]
 #[clap(author, version, about, long_about = None)]
 struct Args {
-    /// Should setup be performed?
+    /// Run first time setup
     #[clap(short, long)]
     setup: bool,
 }
@@ -58,7 +59,7 @@ fn setup() -> Result<(), ::std::io::Error> {
             .with_prompt("Enter notes path")
             .default(dir_str)
             .interact_text()?;
-        
+
         let tool_input: String = Input::new()
             .with_prompt("Enter tool to edit notes")
             .default(tool_str)
@@ -79,6 +80,27 @@ fn setup() -> Result<(), ::std::io::Error> {
     return Ok(());
 }
 
+// TODO: return result
+fn parse_kicked(mut file: File) -> Vec<String> {
+    let mut kicked_items: Vec<String> = Vec::new();
+
+    let mut s = String::new();
+    file.read_to_string(&mut s).unwrap();
+
+    let split = s.split("\n");
+    let mut start_collecting = false;
+    for s in split {
+        if start_collecting && !s.is_empty() {
+            kicked_items.push(s.to_string());
+        }
+        if s.eq("Kicked to tomorrow:") {
+            start_collecting = true;
+        }
+    }
+
+    return kicked_items;
+}
+
 fn main() {
     setup().unwrap();
 
@@ -89,7 +111,7 @@ fn main() {
     let file_path = cfg.dir.as_path();
     let file_path_str = cfg.dir.display();
 
-    let _file = match File::open(&file_path) {
+    let today_file = match File::open(&file_path) {
         Err(_) => match File::create(&file_path) {
             Err(why) => {
                 panic!("couldn't write to {}: {}", file_path_str, why)
@@ -109,6 +131,16 @@ fn main() {
             file
         }
     };
+
+    let kicked_items = parse_kicked(today_file);
+
+    if kicked_items.len() > 0 {
+        let chosen: Vec<usize> = MultiSelect::new().items(&kicked_items).interact().unwrap();
+
+        for s in chosen {
+            println!("{}", kicked_items[s]);
+        }
+    }
 
     Command::new(cfg.tool)
         .arg(file_path_str.to_string())
