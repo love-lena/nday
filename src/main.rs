@@ -6,6 +6,7 @@ use std::path::PathBuf;
 use std::process::Command;
 
 use clap::Parser;
+use console::style;
 use dialoguer::Input;
 use dialoguer::MultiSelect;
 
@@ -89,7 +90,7 @@ fn parse_kicked(mut file: File) -> Vec<String> {
     let split = s.split('\n');
     let mut start_collecting = false;
     for s in split {
-        if start_collecting && !s.is_empty() {
+        if start_collecting && !s.is_empty() && !s.eq("- ") {
             kicked_items.push(s.to_string());
         }
         if s.eq("kicked:") {
@@ -159,9 +160,13 @@ fn main() {
             let data_path_buf = cfg.dir.clone();
             let kicked_items_to_add = match get_yesterday(data_path_buf) {
                 Some(yesterday_file_path) => {
+                    let yesterday_file_path_str =
+                        yesterday_file_path.file_name().unwrap().to_str().unwrap();
+                    let note_date =
+                        NaiveDate::parse_from_str(yesterday_file_path_str, "%0e%b%Y.txt").unwrap();
                     println!(
-                        "pulling kicked items from most recent note: {}",
-                        yesterday_file_path.display()
+                        "Pulling kicked items from {}",
+                        style(note_date.format("%A %B %-e %Y")).cyan()
                     );
                     let yesterday_file = File::open(&yesterday_file_path).unwrap();
                     let kicked_items = parse_kicked(yesterday_file);
@@ -187,7 +192,7 @@ fn main() {
                 }
 
                 Ok(mut new_file) => {
-                    let todays_text = local.format("%-e %B, %Y").to_string();
+                    let todays_text = local.format("%A %-e %B, %Y").to_string();
                     let todo_text = format!("todo:\n{}", kicked_items_to_add.join("\n"));
                     let done_text = "done:\n- ";
                     let kicked_text = "kicked:\n- ";
@@ -197,18 +202,31 @@ fn main() {
                     );
                     match new_file.write_all(new_file_text.as_bytes()) {
                         Err(why) => panic!("couldn't write to {}: {}", file_path_str, why),
-                        Ok(_) => println!("created today's notes {}", file_path_str),
+                        Ok(_) => {
+                            let file_name_str = file_path.file_name().unwrap().to_str().unwrap();
+                            let note_date =
+                                NaiveDate::parse_from_str(file_name_str, "%0e%b%Y.txt").unwrap();
+                            println!(
+                                "Created note for today {}",
+                                style(note_date.format("%A %B %-e")).cyan()
+                            );
+                        }
                     };
                     new_file
                 }
             }
         }
 
-        Ok(file) => {
-            println!("opening today's notes in {} ({})", cfg.tool, file_path_str);
-            file
-        }
+        Ok(file) => file,
     };
+
+    let file_name_str = file_path.file_name().unwrap().to_str().unwrap();
+    let note_date = NaiveDate::parse_from_str(file_name_str, "%0e%b%Y.txt").unwrap();
+    println!(
+        "Using {} to open notes for today {}",
+        cfg.tool,
+        style(note_date.format("%A %B %-e")).cyan()
+    );
 
     Command::new(cfg.tool)
         .arg(file_path_str.to_string())
