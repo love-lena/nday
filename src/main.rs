@@ -6,6 +6,7 @@ use std::path::PathBuf;
 use std::process::Command;
 
 use clap::Parser;
+use console::style;
 use dialoguer::Input;
 use dialoguer::MultiSelect;
 
@@ -159,9 +160,13 @@ fn main() {
             let data_path_buf = cfg.dir.clone();
             let kicked_items_to_add = match get_yesterday(data_path_buf) {
                 Some(yesterday_file_path) => {
+                    let yesterday_file_path_str =
+                        yesterday_file_path.file_name().unwrap().to_str().unwrap();
+                    let note_date =
+                        NaiveDate::parse_from_str(yesterday_file_path_str, "%0e%b%Y.txt").unwrap();
                     println!(
-                        "pulling kicked items from most recent note: {}",
-                        yesterday_file_path.display()
+                        "pulling kicked items from {}",
+                        style(note_date.format("%A %B %-e %Y")).cyan()
                     );
                     let yesterday_file = File::open(&yesterday_file_path).unwrap();
                     let kicked_items = parse_kicked(yesterday_file);
@@ -197,7 +202,15 @@ fn main() {
                     );
                     match new_file.write_all(new_file_text.as_bytes()) {
                         Err(why) => panic!("couldn't write to {}: {}", file_path_str, why),
-                        Ok(_) => println!("created today's notes {}", file_path_str),
+                        Ok(_) => {
+                            let file_name_str = file_path.file_name().unwrap().to_str().unwrap();
+                            let note_date =
+                                NaiveDate::parse_from_str(file_name_str, "%0e%b%Y.txt").unwrap();
+                            println!(
+                                "created note for today {}",
+                                style(note_date.format("%A %B %-e %Y")).cyan()
+                            );
+                        }
                     };
                     new_file
                 }
@@ -205,7 +218,13 @@ fn main() {
         }
 
         Ok(file) => {
-            println!("opening today's notes in {} ({})", cfg.tool, file_path_str);
+            let file_name_str = file_path.file_name().unwrap().to_str().unwrap();
+            let note_date = NaiveDate::parse_from_str(file_name_str, "%0e%b%Y.txt").unwrap();
+            println!(
+                "opening today {}'s notes in {}",
+                style(note_date.format("%A %B %-e %Y")).cyan(),
+                cfg.tool
+            );
             file
         }
     };
