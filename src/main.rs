@@ -1,9 +1,8 @@
-use std::fs::read_dir;
+use std::fs::{read_dir, File};
 use std::io::{Read, Write};
-use std::vec;
-use std::{fs::File, path::PathBuf};
-
+use std::path::PathBuf;
 use std::process::Command;
+use std::vec;
 
 use chrono::{DateTime, Local, NaiveDate, ParseError};
 use clap::Parser;
@@ -23,7 +22,7 @@ struct NdayConfig {
 /// `NdayConfig` implements `Default`
 impl ::std::default::Default for NdayConfig {
     fn default() -> Self {
-        let mut homepath = home::home_dir().unwrap();
+        let mut homepath = home::home_dir().expect("Could not locate home directory");
         homepath.push("nday_data");
         Self {
             dir: homepath,
@@ -35,7 +34,11 @@ impl ::std::default::Default for NdayConfig {
 
 // create_config handles I/O
 fn create_config(mut cfg: NdayConfig) -> Result<(), std::io::Error> {
-    let dir_str = cfg.dir.into_os_string().into_string().unwrap();
+    let dir_str = cfg
+        .dir
+        .into_os_string()
+        .into_string()
+        .expect("Could not locate home directory");
     let tool_str = cfg.tool;
 
     let dir_input: String = Input::new()
@@ -57,7 +60,7 @@ fn create_config(mut cfg: NdayConfig) -> Result<(), std::io::Error> {
     cfg.dir = datapath;
     cfg.tool = tool_input;
     cfg.setup = true;
-    confy::store("nday", cfg).unwrap();
+    confy::store("nday", cfg).expect("Could not store config");
 
     Result::Ok(())
 }
@@ -71,10 +74,6 @@ fn get_most_recent_before(dates: &Vec<NaiveDate>, before: &NaiveDate) -> Option<
     }
     recent
 }
-
-// fn get_kicked_from(contents: String) -> Vec<String> {
-//     vec![]
-// }
 
 fn generate_new_note_text(date: &NaiveDate, kicked: &[String]) -> String {
     let todays_text = date.format("%A %-e %B, %Y").to_string();
@@ -122,11 +121,11 @@ struct Args {
 fn main() {
     let args: Args = Args::parse();
     let cfg_old: NdayConfig = confy::load("nday").expect("Could not locate config file");
-    // if setup
+
     if args.setup || !cfg_old.setup {
         create_config(cfg_old).expect("Could not create config file");
     }
-    // read config
+
     let cfg: NdayConfig = confy::load("nday").expect("Could not locate config file");
 
     // check for todays note
@@ -141,7 +140,7 @@ fn main() {
         // get kicked items
         let files_in_dir = read_dir(&cfg.dir).expect("Could not read from notes folder");
 
-        //map ReadDir to vector of NaiveDates
+        // map ReadDir to vector of NaiveDates
         // ReadDir -> DirFile -> file_name -> to_str -> to_date -> collect
         let file_dates: Vec<NaiveDate> = files_in_dir
             .filter_map(|f| f.ok())
@@ -155,18 +154,21 @@ fn main() {
                 yesterday_file_path.push(&cfg.dir);
                 yesterday_file_path.push(date_to_file_name(&yesterday_date));
                 let mut yesterday_file =
-                    File::open(yesterday_file_path).expect("could not open last note file");
+                    File::open(yesterday_file_path).expect("Could not open last note file");
                 let mut yesterday_file_contents = String::new();
+
                 yesterday_file
                     .read_to_string(&mut yesterday_file_contents)
-                    .expect("could not open last note file");
+                    .expect("Could not open last note file");
 
                 let kicked_items = get_kicked_items(yesterday_file_contents);
 
                 let mut kicked_items_to_copy: Vec<String> = Vec::new();
                 if !kicked_items.is_empty() {
-                    let chosen: Vec<usize> =
-                        MultiSelect::new().items(&kicked_items).interact().unwrap();
+                    let chosen: Vec<usize> = MultiSelect::new()
+                        .items(&kicked_items)
+                        .interact()
+                        .expect("Could not get user input");
 
                     for s in chosen {
                         kicked_items_to_copy.push(kicked_items[s].clone());
@@ -178,19 +180,14 @@ fn main() {
             None => vec![],
         };
 
-        // generate_new_note_text
         let new_note_text = generate_new_note_text(&local, &kicked_items);
 
-        // create file
-        // write contents
-        println!("{:?}", today_path);
-        println!("{:?}", new_note_text.as_bytes());
-
+        // create file and write contents
         let mut today_file = File::create(&today_path).expect("Could not create today's notes");
 
         today_file
             .write_all(new_note_text.as_bytes())
-            .expect("could not write to today's notes");
+            .expect("Could not write to today's notes");
     };
 
     println!(
