@@ -8,7 +8,7 @@ use std::process::Command;
 use chrono::{DateTime, Local, NaiveDate, ParseError};
 use clap::Parser;
 use console::style;
-use dialoguer::Input;
+use dialoguer::{Input, MultiSelect};
 use serde::{Deserialize, Serialize};
 
 // Default location on mac is /Users/[user]/Library/Preferences/rs.nday/
@@ -76,7 +76,7 @@ fn get_most_recent_before(dates: &Vec<NaiveDate>, before: &NaiveDate) -> Option<
 //     vec![]
 // }
 
-fn generate_new_note_text(date: &NaiveDate, kicked: &Vec<String>) -> String {
+fn generate_new_note_text(date: &NaiveDate, kicked: &[String]) -> String {
     let todays_text = date.format("%A %-e %B, %Y").to_string();
     let todo_text = format!("todo:\n{}", kicked.join("\n"));
     let done_text = "done:\n- ";
@@ -95,7 +95,6 @@ fn file_name_to_date(file_name: &str) -> Result<NaiveDate, ParseError> {
     NaiveDate::parse_from_str(file_name, "%0e%b%Y.txt")
 }
 
-// handles I/O
 fn get_kicked_items(from_note: String) -> Vec<String> {
     let mut kicked_items: Vec<String> = Vec::new();
     let split = from_note.split('\n');
@@ -140,7 +139,7 @@ fn main() {
 
     if !today_path.exists() {
         // get kicked items
-        let files_in_dir = read_dir(cfg.dir).expect("Could not read from notes folder");
+        let files_in_dir = read_dir(&cfg.dir).expect("Could not read from notes folder");
 
         //map ReadDir to vector of NaiveDates
         // ReadDir -> DirFile -> file_name -> to_str -> to_date -> collect
@@ -152,14 +151,29 @@ fn main() {
 
         let kicked_items = match get_most_recent_before(&file_dates, &local) {
             Some(yesterday_date) => {
-                let mut yesterday_file = File::open(date_to_file_name(&yesterday_date))
-                    .expect("could not open last note file");
+                let mut yesterday_file_path = PathBuf::new();
+                yesterday_file_path.push(&cfg.dir);
+                yesterday_file_path.push(date_to_file_name(&yesterday_date));
+                let mut yesterday_file =
+                    File::open(yesterday_file_path).expect("could not open last note file");
                 let mut yesterday_file_contents = String::new();
                 yesterday_file
                     .read_to_string(&mut yesterday_file_contents)
                     .expect("could not open last note file");
 
-                get_kicked_items(yesterday_file_contents)
+                let kicked_items = get_kicked_items(yesterday_file_contents);
+
+                let mut kicked_items_to_copy: Vec<String> = Vec::new();
+                if !kicked_items.is_empty() {
+                    let chosen: Vec<usize> =
+                        MultiSelect::new().items(&kicked_items).interact().unwrap();
+
+                    for s in chosen {
+                        kicked_items_to_copy.push(kicked_items[s].clone());
+                    }
+                }
+                kicked_items_to_copy.push(String::from("- "));
+                kicked_items_to_copy
             }
             None => vec![],
         };
@@ -168,21 +182,17 @@ fn main() {
         let new_note_text = generate_new_note_text(&local, &kicked_items);
 
         // create file
-        let mut today_file = File::create(&today_path).expect("Could not create today's notes");
         // write contents
+        println!("{:?}", today_path);
+        println!("{:?}", new_note_text.as_bytes());
+
+        let mut today_file = File::create(&today_path).expect("Could not create today's notes");
+
         today_file
             .write_all(new_note_text.as_bytes())
             .expect("could not write to today's notes");
     };
 
-    // open todays note
-    // let file_name_str = today_path
-    //     .file_name()
-    //     .expect("today's file is invalid")
-    //     .to_str()
-    //     .expect("today's file is invalid");
-    // let note_date =
-    //     NaiveDate::parse_from_str(file_name_str, "%0e%b%Y.txt").expect("Today's note is invalid");
     println!(
         "Using {} to open notes for today {}",
         cfg.tool,
@@ -190,7 +200,7 @@ fn main() {
     );
 
     Command::new(cfg.tool)
-        .arg(local_file_name.to_string())
+        .arg(&today_path)
         .status()
         .expect("Could not open today's notes using provided tool");
 }
